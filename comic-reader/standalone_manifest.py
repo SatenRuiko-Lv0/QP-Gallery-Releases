@@ -84,8 +84,8 @@ def manifest_replacements(tag, attrs):
     if tag == "manifest" and attrs.get((None, "package")) == UPSTREAM_PACKAGE:
         return {
             (None, "package"): COMIC_PACKAGE,
-            (ANDROID_NAMESPACE, "versionCode"): 9900007,
-            (ANDROID_NAMESPACE, "versionName"): "10.0.2-comic.8",
+            (ANDROID_NAMESPACE, "versionCode"): 9900008,
+            (ANDROID_NAMESPACE, "versionName"): "10.0.2-comic.9",
         }
     if tag == "application" or (tag == "activity"
                                 and android_name == f"{UPSTREAM_PACKAGE}.GalleryActivity"):

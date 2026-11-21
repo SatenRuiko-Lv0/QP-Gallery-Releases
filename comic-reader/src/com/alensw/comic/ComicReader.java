@@ -5,6 +5,7 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.Color;
+import android.graphics.Point;
 import android.graphics.drawable.Animatable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
@@ -14,6 +15,7 @@ import android.preference.PreferenceManager;
 import android.view.GestureDetector;
 import android.view.Gravity;
 import android.view.MotionEvent;
+import android.view.RoundedCorner;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowInsets;
@@ -148,25 +150,13 @@ final class ComicReader extends FrameLayout {
         counter.setBackground(background);
         LayoutParams badge = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT,
                 Gravity.RIGHT | Gravity.BOTTOM);
-        badge.setMargins(0, 0, dp(8), dp(6));
+        badge.setMargins(0, 0, badgeRightPadding(), dp(6));
         addView(counter, badge);
         controls = new ComicControls(this, pages, this::jumpToPage, activity::onBackPressed,
                 () -> setAutoScroll(!autoScroll), this::showReaderSettings);
         setOnApplyWindowInsetsListener((view, insets) -> {
-            int right = dp(8) + insets.getStableInsetRight();
             WindowInsets rootInsets = view.getRootWindowInsets();
-            WindowInsets window = rootInsets == null ? insets : rootInsets;
-            int bottomInset = Build.VERSION.SDK_INT >= 30
-                    ? SystemBars.bottomInset(window) : window.getSystemWindowInsetBottom();
-            int topInset = Build.VERSION.SDK_INT >= 30
-                    ? SystemBars.topInset(window) : window.getSystemWindowInsetTop();
-            controls.setInsets(window.getStableInsetLeft(), topInset, window.getStableInsetRight(), bottomInset);
-            int bottom = dp(6) + bottomInset;
-            if (badge.rightMargin != right || badge.bottomMargin != bottom) {
-                badge.rightMargin = right;
-                badge.bottomMargin = bottom;
-                counter.setLayoutParams(badge);
-            }
+            updateReadingInsets(rootInsets == null ? insets : rootInsets);
             if (Build.VERSION.SDK_INT >= 30 && chromeActive && !chromeVisible
                     && SystemBars.areVisible(activity, insets)) {
                 post(() -> {
@@ -249,8 +239,58 @@ final class ComicReader extends FrameLayout {
     @Override
     protected void onSizeChanged(int width, int height, int oldWidth, int oldHeight) {
         super.onSizeChanged(width, height, oldWidth, oldHeight);
+        WindowInsets window = getRootWindowInsets();
+        if (window != null) {
+            updateReadingInsets(window);
+        }
         positionAnchor();
         loader.setWidth(width);
+    }
+
+    private int badgeRightPadding() {
+        return dp(Build.VERSION.SDK_INT >= 31 ? 8 : 16);
+    }
+
+    private void updateReadingInsets(WindowInsets window) {
+        int bottomInset = Build.VERSION.SDK_INT >= 30
+                ? SystemBars.bottomInset(window) : window.getSystemWindowInsetBottom();
+        int topInset = Build.VERSION.SDK_INT >= 30
+                ? SystemBars.topInset(window) : window.getSystemWindowInsetTop();
+        controls.setInsets(window.getStableInsetLeft(), topInset, window.getStableInsetRight(), bottomInset);
+
+        int bottom = dp(6) + bottomInset;
+        int right = badgeRightPadding() + window.getStableInsetRight();
+        if (Build.VERSION.SDK_INT >= 31) {
+            right = CornerInsets.badgeRightMargin(this, window, right, bottom);
+        }
+        LayoutParams badge = (LayoutParams) counter.getLayoutParams();
+        if (badge.rightMargin != right || badge.bottomMargin != bottom) {
+            badge.rightMargin = right;
+            badge.bottomMargin = bottom;
+            counter.setLayoutParams(badge);
+        }
+    }
+
+    private static final class CornerInsets {
+        static int badgeRightMargin(ComicReader reader, WindowInsets window, int right, int bottom) {
+            RoundedCorner corner = window.getRoundedCorner(RoundedCorner.POSITION_BOTTOM_RIGHT);
+            if (corner == null) {
+                return right;
+            }
+            Point center = corner.getCenter();
+            int[] origin = new int[2];
+            reader.getLocationInWindow(origin);
+            int badgeBottom = origin[1] + reader.getHeight() - bottom;
+            if (badgeBottom <= center.y) {
+                return right;
+            }
+            int radius = corner.getRadius();
+            int dy = Math.min(radius, badgeBottom - center.y);
+            // The arc limits the right edge at the badge's lowest point.
+            int reach = (int) Math.sqrt((double) (radius - dy) * (radius + dy));
+            int safeRight = center.x + reach - reader.dp(1);
+            return Math.max(right, origin[0] + reader.getWidth() - safeRight);
+        }
     }
 
     private void positionAnchor() {

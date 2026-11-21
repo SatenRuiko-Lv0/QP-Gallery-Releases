@@ -3,7 +3,7 @@ param(
     [Parameter(Mandatory)] [string] $ApktoolJar,
     [string] $JavaDir = $env:JAVA_HOME,
     [string] $AndroidSdk = "$env:LOCALAPPDATA/Android/Sdk",
-    [string] $OutputApk = "$PSScriptRoot/../dist/QP-Gallery-10.0.2-Comic-Standalone-v8.apk"
+    [string] $OutputApk = "$PSScriptRoot/../dist/QP-Gallery-10.0.2-Comic-Standalone-v9.apk"
 )
 
 $ErrorActionPreference = 'Stop'
