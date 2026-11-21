@@ -1,5 +1,15 @@
 # QuickPic Gallery Mod
 
+## QP 漫画版
+
+基于 WSTxda 的 QuickPic Gallery 10.0.2 Alpha 2，包含 ARM64 原生库。独立包名为 `com.qpgallery.comic`，可与原版 QuickPic 并排安装。[上游发布页](https://github.com/WSTxda/QP-Gallery-Releases/releases/tag/10.0.2)
+
+[下载 QP 漫画版 10.0.2-comic.2](https://github.com/SatenRuiko-Lv0/QP-Gallery-Releases/releases/tag/10.0.2-comic.2)
+
+在 **设置 → 查看 → 漫画阅读模式** 中开启。打开任意一张图片，即可按相册顺序连续竖滑，右下角显示页码。轻点图片切换顶栏，滑动时自动收起。
+
+## Upstream QuickPic Gallery
+
 QuickPic Gallery is the ultimate gallery app for Android – fast, light, modern, and feature-rich.
 
 [![Platform](https://img.shields.io/badge/android-platform?style=for-the-badge&label=platform&labelColor=21262d&color=6e7681)](https://www.android.com) 
@@ -45,17 +55,27 @@ A modernized version of the classic QuickPic Gallery, focused on speed, stabilit
 - Restore local Wi-Fi file transfers with Nearby Devices permission support.
 - Add an in-app update checker in settings.
 
-## Requirements
+## Upstream stable requirements
 
 > [!WARNING]
 > **32-bit Support Required:** This app relies on legacy 32-bit libraries (`armeabi-v7a`). Newer **64-bit-only devices** launched with recent Android versions (Android 14/17+) will **not** be able to install or run this mod. Please check your device's architecture before proceeding.
 
-## Download
+## Upstream downloads
 
 [<img src="https://raw.githubusercontent.com/WSTxda/WSTxda/main/images/GitHub.svg" salt='Get it on GitHub' height="80">](https://github.com/WSTxda/QP-Gallery-Releases/releases/latest)
 [<img src="https://raw.githubusercontent.com/WSTxda/WSTxda/main/images/Telegram.svg" alt='Get it on Telegram' height="80">](https://t.me/WSTprojects)
 
 ## Development
+
+### 构建漫画版
+
+Windows 构建需要 JDK（可使用 Android Studio 自带的 JBR）、Python 3.10 或更新版本、Android SDK 36、Build Tools 36.1.0 和 Apktool 3.0.3。下载上游发布的 `alpha.apk`，然后在仓库根目录运行以下命令。[补丁源码](comic-reader/) · [上游 APK](https://github.com/WSTxda/QP-Gallery-Releases/releases/tag/10.0.2)
+
+~~~powershell
+.\comic-reader\build.ps1 -BaseApk .\alpha.apk -ApktoolJar .\apktool_3.0.3.jar -JavaDir 'C:\path\to\jdk'
+~~~
+
+构建产物写入 `dist/`。覆盖安装已发布的漫画版时，升级 APK 需要沿用发行签名。
 
 ### Donate
 
