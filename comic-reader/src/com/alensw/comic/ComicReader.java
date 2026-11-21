@@ -1,13 +1,16 @@
 package com.alensw.comic;
 
 import android.app.ActionBar;
+import android.app.AlertDialog;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.drawable.Animatable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Build;
+import android.preference.PreferenceManager;
 import android.view.GestureDetector;
 import android.view.Gravity;
 import android.view.MotionEvent;
@@ -27,6 +30,9 @@ import com.alensw.ui.c.cx;
 import java.util.List;
 
 final class ComicReader extends FrameLayout {
+    private static final String AUTO_SCROLL_SECONDS = "comic_auto_scroll_seconds";
+    private static final int[] AUTO_INTERVALS = {2, 3, 5, 8, 12};
+
     static final class Page {
         final Uri uri;
         final String title;
@@ -45,14 +51,19 @@ final class ComicReader extends FrameLayout {
     private final cx activity;
     private final ListView list;
     private final TextView counter;
-    private final View endSpace;
+    private final ComicControls controls;
     private final String failure;
     private int current;
-    private final int initialPage;
-    private float initialOffset;
+    private int anchorPage;
+    // NaN anchors a newly selected image. A saved offset is relative to its page height.
+    private float anchorOffset;
+    private boolean hasScrolled;
     private boolean chromeActive;
     private boolean chromeVisible;
     private boolean acceptTap;
+    private boolean autoScroll;
+    private final Runnable advanceAuto = this::advanceAutoScroll;
+    private int autoInterval;
     private int previousBarsBehavior;
 
     ComicReader(cx activity, List<Page> pages, int initialPage, float initialOffset) {
@@ -61,8 +72,9 @@ final class ComicReader extends FrameLayout {
         this.activity = activity;
         this.pages = pages;
         this.current = initialPage;
-        this.initialPage = initialPage;
-        this.initialOffset = initialOffset;
+        anchorPage = initialPage;
+        anchorOffset = initialOffset;
+        autoInterval = preferences().getInt(AUTO_SCROLL_SECONDS, 3);
         loader = new PageLoader(context, pages, initialPage, new PageLoader.Listener() {
             @Override
             public void aspectReady(int index, float aspect) {
@@ -83,6 +95,8 @@ final class ComicReader extends FrameLayout {
         list = new ListView(context);
         list.setDivider(null);
         list.setDividerHeight(0);
+        list.setStackFromBottom(true);
+        list.setOverScrollMode(View.OVER_SCROLL_NEVER);
         list.setFocusableInTouchMode(true);
         list.setVerticalScrollBarEnabled(false);
         list.setSelector(android.R.color.transparent);
@@ -104,6 +118,7 @@ final class ComicReader extends FrameLayout {
             @Override
             public boolean onScroll(MotionEvent start, MotionEvent end, float dx, float dy) {
                 acceptTap = false;
+                setAutoScroll(false);
                 showChrome(false);
                 return false;
             }
@@ -118,16 +133,6 @@ final class ComicReader extends FrameLayout {
                 ((PageView) view).clear();
             }
         });
-        // A short last page can reach the top when it was the image tapped in the album.
-        endSpace = new View(context) {
-            @Override
-            protected void onMeasure(int widthSpec, int heightSpec) {
-                int width = MeasureSpec.getSize(widthSpec);
-                int height = pageHeight(pages.get(pages.size() - 1), width);
-                setMeasuredDimension(width, Math.max(0, list.getHeight() - height));
-            }
-        };
-        list.addFooterView(endSpace, null, false);
         addView(list, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
 
         counter = new TextView(context);
@@ -143,11 +148,20 @@ final class ComicReader extends FrameLayout {
         counter.setBackground(background);
         LayoutParams badge = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT,
                 Gravity.RIGHT | Gravity.BOTTOM);
-        badge.setMargins(0, 0, dp(8), dp(8));
+        badge.setMargins(0, 0, dp(8), dp(6));
         addView(counter, badge);
+        controls = new ComicControls(this, pages, this::jumpToPage, activity::onBackPressed,
+                () -> setAutoScroll(!autoScroll), this::showReaderSettings);
         setOnApplyWindowInsetsListener((view, insets) -> {
             int right = dp(8) + insets.getStableInsetRight();
-            int bottom = dp(8) + insets.getStableInsetBottom();
+            WindowInsets rootInsets = view.getRootWindowInsets();
+            WindowInsets window = rootInsets == null ? insets : rootInsets;
+            int bottomInset = Build.VERSION.SDK_INT >= 30
+                    ? SystemBars.bottomInset(window) : window.getSystemWindowInsetBottom();
+            int topInset = Build.VERSION.SDK_INT >= 30
+                    ? SystemBars.topInset(window) : window.getSystemWindowInsetTop();
+            controls.setInsets(window.getStableInsetLeft(), topInset, window.getStableInsetRight(), bottomInset);
+            int bottom = dp(6) + bottomInset;
             if (badge.rightMargin != right || badge.bottomMargin != bottom) {
                 badge.rightMargin = right;
                 badge.bottomMargin = bottom;
@@ -171,24 +185,42 @@ final class ComicReader extends FrameLayout {
             @Override
             public void onScrollStateChanged(AbsListView view, int state) {
                 if (state != SCROLL_STATE_IDLE) {
+                    hasScrolled = true;
                     showChrome(false);
-                }
-                if (state == SCROLL_STATE_TOUCH_SCROLL) {
-                    ComicReader.this.initialOffset = 0;
                 }
             }
 
             @Override
             public void onScroll(AbsListView view, int first, int visible, int total) {
                 if (visible > 0) {
-                    int page = Math.min(first, pages.size() - 1);
-                    loader.setViewport(page, Math.min(first + visible - 1, pages.size() - 1));
+                    int last = first + visible - 1;
+                    loader.setViewport(first, last);
+                    int page = currentPageInViewport(first, last);
                     if (page != current) {
                         updateCounter(page);
                     }
                 }
             }
         });
+    }
+
+    private int currentPageInViewport(int first, int last) {
+        if (!hasScrolled && anchorPage >= first && anchorPage <= last) {
+            return anchorPage;
+        }
+        if (last == pages.size() - 1 && !list.canScrollList(1)) {
+            return last;
+        }
+        if (first == 0 && !list.canScrollList(-1)) {
+            return first;
+        }
+        int center = list.getHeight() / 2;
+        for (int i = first; i < last; i++) {
+            if (list.getChildAt(i - first).getBottom() > center) {
+                return i;
+            }
+        }
+        return last;
     }
 
     @Override
@@ -200,14 +232,52 @@ final class ComicReader extends FrameLayout {
 
     @Override
     protected void onDetachedFromWindow() {
+        setAutoScroll(false);
+        controls.setVisible(false);
         loader.detach();
         super.onDetachedFromWindow();
     }
 
     @Override
+    protected void onWindowVisibilityChanged(int visibility) {
+        super.onWindowVisibilityChanged(visibility);
+        if (visibility != VISIBLE) {
+            setAutoScroll(false);
+        }
+    }
+
+    @Override
     protected void onSizeChanged(int width, int height, int oldWidth, int oldHeight) {
         super.onSizeChanged(width, height, oldWidth, oldHeight);
+        positionAnchor();
         loader.setWidth(width);
+    }
+
+    private void positionAnchor() {
+        Page page = pages.get(anchorPage);
+        if (hasScrolled || getWidth() == 0 || getHeight() == 0 || page.aspect == 0) {
+            return;
+        }
+        int height = pageHeight(page, getWidth());
+        // Leave the start of a tall page visible. ListView clamps to the album boundaries.
+        int top = Float.isNaN(anchorOffset)
+                ? Math.max(0, (getHeight() - height) / 2)
+                : Math.min(getHeight() - 1, -Math.round(height * anchorOffset));
+        list.setSelectionFromTop(anchorPage, top);
+    }
+
+    private void jumpToPage(int page) {
+        setAutoScroll(false);
+        anchorPage = page;
+        anchorOffset = Float.NaN;
+        hasScrolled = false;
+        updateCounter(page);
+        loader.setViewport(page, page);
+        if (pages.get(page).aspect == 0) {
+            list.setSelectionFromTop(page, 0);
+        } else {
+            positionAnchor();
+        }
     }
 
     private PageView visibleView(int index) {
@@ -231,18 +301,14 @@ final class ComicReader extends FrameLayout {
         if (view != null) {
             view.requestLayout();
         }
-        if (index == pages.size() - 1) {
-            endSpace.requestLayout();
-        }
-        if (index == current && index == initialPage && initialOffset > 0) {
-            int offset = Math.round(pageHeight(page, list.getWidth()) * initialOffset);
-            initialOffset = 0;
-            list.setSelectionFromTop(index, -offset);
+        if (index == anchorPage || view != null) {
+            positionAnchor();
         }
     }
 
     void resetChrome() {
         acceptTap = false;
+        setAutoScroll(false);
         if (Build.VERSION.SDK_INT >= 30 && !chromeActive) {
             previousBarsBehavior = SystemBars.behavior(activity);
         }
@@ -258,6 +324,8 @@ final class ComicReader extends FrameLayout {
         }
         chromeActive = false;
         acceptTap = false;
+        setAutoScroll(false);
+        controls.setVisible(false);
         if (Build.VERSION.SDK_INT >= 30) {
             SystemBars.release(activity, previousBarsBehavior);
         }
@@ -270,11 +338,6 @@ final class ComicReader extends FrameLayout {
     private void showChrome(boolean visible) {
         if (chromeActive && visible != chromeVisible) {
             chromeVisible = visible;
-            if (visible) {
-                String title = currentPage().title;
-                activity.setTitle(title == null || title.isEmpty()
-                        ? (ComicMode.chinese(activity) ? "漫画阅读" : "Comic reader") : title);
-            }
             applyChrome();
         }
     }
@@ -286,12 +349,71 @@ final class ComicReader extends FrameLayout {
         }
         ActionBar bar = activity.getActionBar();
         if (bar != null) {
-            if (chromeVisible) {
-                bar.show();
-            } else {
-                bar.hide();
+            bar.hide();
+        }
+        if (chromeVisible) {
+            updateControls();
+        }
+        controls.setVisible(chromeVisible);
+        counter.setVisibility(chromeVisible ? View.GONE : View.VISIBLE);
+    }
+
+    private void updateControls() {
+        String title = currentPage().title;
+        controls.showPage(current, title == null || title.isEmpty()
+                ? (ComicMode.chinese(activity) ? "漫画阅读" : "Comic reader") : title);
+    }
+
+    private SharedPreferences preferences() {
+        return PreferenceManager.getDefaultSharedPreferences(activity);
+    }
+
+    private void setAutoScroll(boolean enabled) {
+        if (enabled == autoScroll) {
+            return;
+        }
+        autoScroll = enabled;
+        controls.setAutoScroll(enabled);
+        if (enabled) {
+            showChrome(false);
+            postDelayed(advanceAuto, autoInterval * 1000L);
+        } else {
+            removeCallbacks(advanceAuto);
+        }
+    }
+
+    private void advanceAutoScroll() {
+        if (!isShown() || !list.canScrollList(1)) {
+            setAutoScroll(false);
+            return;
+        }
+        if (!chromeVisible) {
+            list.smoothScrollBy(Math.round(list.getHeight() * 0.82f), 360);
+        }
+        postDelayed(advanceAuto, autoInterval * 1000L);
+    }
+
+    private void showReaderSettings() {
+        setAutoScroll(false);
+        boolean zh = ComicMode.chinese(activity);
+        String[] labels = new String[AUTO_INTERVALS.length];
+        int selected = -1;
+        for (int i = 0; i < labels.length; i++) {
+            int seconds = AUTO_INTERVALS[i];
+            labels[i] = seconds + (zh ? " 秒" : " s");
+            if (seconds == autoInterval) {
+                selected = i;
             }
         }
+        new AlertDialog.Builder(activity)
+                .setTitle(zh ? "自动滚动间隔" : "Auto-scroll interval")
+                .setSingleChoiceItems(labels, selected, (dialog, index) -> {
+                    autoInterval = AUTO_INTERVALS[index];
+                    preferences().edit().putInt(AUTO_SCROLL_SECONDS, autoInterval).apply();
+                    dialog.dismiss();
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
     }
 
     private static final class SystemBars {
@@ -304,6 +426,16 @@ final class ComicReader extends FrameLayout {
         static boolean areVisible(cx activity, WindowInsets insets) {
             return insets.isVisible(WindowInsets.Type.statusBars())
                     || (hideNavigation(activity) && insets.isVisible(WindowInsets.Type.navigationBars()));
+        }
+
+        static int bottomInset(WindowInsets insets) {
+            return insets.getInsets(WindowInsets.Type.navigationBars()
+                    | WindowInsets.Type.displayCutout()).bottom;
+        }
+
+        static int topInset(WindowInsets insets) {
+            return insets.getInsets(WindowInsets.Type.statusBars()
+                    | WindowInsets.Type.displayCutout()).top;
         }
 
         static void apply(cx activity, boolean visible) {
@@ -344,16 +476,19 @@ final class ComicReader extends FrameLayout {
     }
 
     float currentOffset() {
-        if (initialOffset > 0 && current == initialPage) {
-            return initialOffset;
+        if (!hasScrolled && current == anchorPage) {
+            return anchorOffset;
         }
-        View first = list.getChildAt(0);
-        return first == null ? 0 : Math.max(0, -first.getTop()) / (float) Math.max(1, first.getHeight());
+        View page = visibleView(current);
+        return page == null ? 0 : -page.getTop() / (float) Math.max(1, page.getHeight());
     }
 
     private void updateCounter(int page) {
         current = page;
         counter.setText((page + 1) + " / " + pages.size());
+        if (chromeVisible) {
+            updateControls();
+        }
     }
 
     private int dp(int value) {

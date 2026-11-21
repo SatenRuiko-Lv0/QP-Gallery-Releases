@@ -44,15 +44,27 @@ final class PageImage {
             if (Build.VERSION.SDK_INT >= 28) {
                 return Api28.decode(resolver, uri, width, onAspect);
             }
-            return decodeLegacy(resolver, resources, uri, width, onAspect);
+            return decodeLegacy(resolver, resources, uri, width, MAX_SIDE, onAspect);
         } catch (IOException | RuntimeException unreadable) {
             return null;
         }
     }
 
-    private static double scale(int width, int height, int displayWidth) {
+    static Bitmap thumbnail(ContentResolver resolver, Resources resources, Uri uri, int edge) {
+        try {
+            if (Build.VERSION.SDK_INT >= 28) {
+                return Api28.thumbnail(resolver, uri, edge);
+            }
+            PageImage image = decodeLegacy(resolver, resources, uri, edge, edge, aspect -> {});
+            return image == null ? null : ((BitmapDrawable) image.drawable).getBitmap();
+        } catch (IOException | RuntimeException unreadable) {
+            return null;
+        }
+    }
+
+    private static double scale(int width, int height, int displayWidth, int maxSide) {
         double limit = Math.min(1.0, displayWidth / (double) width);
-        limit = Math.min(limit, MAX_SIDE / (double) Math.max(width, height));
+        limit = Math.min(limit, maxSide / (double) Math.max(width, height));
         return Math.min(limit, Math.sqrt(MAX_PIXELS / ((double) width * height)));
     }
 
@@ -66,16 +78,26 @@ final class PageImage {
                         int width = size.getWidth();
                         int height = size.getHeight();
                         onAspect.accept(height / (double) width);
-                        double factor = scale(width, height, displayWidth);
+                        double factor = scale(width, height, displayWidth, MAX_SIDE);
                         decoder.setTargetSize(Math.max(1, (int) (width * factor)),
                                 Math.max(1, (int) (height * factor)));
                     });
             return new PageImage(drawable);
         }
+
+        static Bitmap thumbnail(ContentResolver resolver, Uri uri, int edge) throws IOException {
+            return ImageDecoder.decodeBitmap(ImageDecoder.createSource(resolver, uri), (decoder, info, source) -> {
+                Size size = info.getSize();
+                double factor = scale(size.getWidth(), size.getHeight(), edge, edge);
+                decoder.setAllocator(ImageDecoder.ALLOCATOR_SOFTWARE);
+                decoder.setTargetSize(Math.max(1, (int) (size.getWidth() * factor)),
+                        Math.max(1, (int) (size.getHeight() * factor)));
+            });
+        }
     }
 
     private static PageImage decodeLegacy(ContentResolver resolver, Resources resources, Uri uri,
-            int displayWidth, DoubleConsumer onAspect) throws IOException {
+            int displayWidth, int maxSide, DoubleConsumer onAspect) throws IOException {
         BitmapFactory.Options options = new BitmapFactory.Options();
         options.inJustDecodeBounds = true;
         try (InputStream stream = resolver.openInputStream(uri)) {
@@ -99,8 +121,8 @@ final class PageImage {
         boolean swap = orientation >= ExifInterface.ORIENTATION_TRANSPOSE
                 && orientation <= ExifInterface.ORIENTATION_ROTATE_270;
         onAspect.accept(swap ? width / (double) height : height / (double) width);
-        double factor = swap ? scale(height, width, displayWidth)
-                : scale(width, height, displayWidth);
+        double factor = swap ? scale(height, width, displayWidth, maxSide)
+                : scale(width, height, displayWidth, maxSide);
         options.inSampleSize = 1;
         while (1.0 / options.inSampleSize > factor) {
             options.inSampleSize *= 2;

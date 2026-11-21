@@ -122,7 +122,7 @@ public final class ComicMode {
         if (selected < 0 && restored < 0) {
             return false;
         }
-        float offset = restored < 0 ? 0 : state.getFloat(SAVED_OFFSET);
+        float offset = restored < 0 ? Float.NaN : state.getFloat(SAVED_OFFSET);
         ViewGroup container = (ViewGroup) root;
         // The original viewer is still responsible for the activity and its Back stack.
         for (int i = 0; i < container.getChildCount(); i++) {
