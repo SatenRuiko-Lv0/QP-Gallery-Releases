@@ -22,6 +22,9 @@ LOCAL = "Lcom/alensw/a/e;"
 HOST = "Lcom/alensw/ui/c/cx;"
 VIEWER = "Lcom/alensw/ui/c/cu;"
 URI = "Landroid/net/Uri;"
+HIDDEN_ITEMS = "Lcom/alensw/comic/HiddenItems;"
+QUICK_APP = "Lcom/alensw/PicFolder/QuickApp;"
+SCANNER = "Lcom/alensw/a/s;"
 
 
 def replace_once(source, old, new):
@@ -160,6 +163,137 @@ def patch(decoded):
 
     patch_standalone_code(decoded)
     patch_reader_chrome(decoded)
+    patch_folder_list(decoded)
+    patch_hidden_items(decoded)
+
+
+def patch_folder_list(decoded):
+    storage = decoded / "smali_classes3/com/alensw/a/s.smali"
+    replacement = f"""
+.method public a({LOCAL}Z)I
+    .locals 1
+    invoke-static {{p1, p2}}, Lcom/alensw/comic/FolderList;->listChildren({LOCAL}Z)I
+    move-result v0
+    return v0
+.end method""".lstrip()
+    source = patch_method(storage.read_text(encoding="utf-8"),
+                          f"a({LOCAL}Z)I", lambda _: replacement)
+    storage.write_text(source, encoding="utf-8", newline="\n")
+
+
+def patch_hidden_items(decoded):
+    files = decoded / "smali/com/alensw/b/l/b.smali"
+    source = patch_method(files.read_text(encoding="utf-8"), "h(Ljava/lang/String;)Z", lambda _: f"""
+.method public static h(Ljava/lang/String;)Z
+    .locals 1
+    invoke-static {{p0}}, {HIDDEN_ITEMS}->isHidden(Ljava/lang/String;)Z
+    move-result v0
+    return v0
+.end method""".lstrip())
+    files.write_text(source, encoding="utf-8", newline="\n")
+
+    scanner = decoded / "smali_classes3/com/alensw/a/al.smali"
+
+    def fix_scan(body):
+        start = body.index("    move/from16 v4, p2")
+        end = body.index("    .line 128", start)
+        body = body[:start] + f"""\
+    move/from16 v4, p2
+    sget-object v5, {QUICK_APP}->q:{SCANNER}
+    iget-boolean v5, v5, {SCANNER}->b:Z
+    invoke-static {{v4, v5}}, {HIDDEN_ITEMS}->includeInScan(IZ)Z
+    move-result v5
+
+    const-string v6, "."
+    if-nez v5, :scan_visible
+    invoke-virtual/range {{p1 .. p1}}, {LOCAL}->getPath()Ljava/lang/String;
+    move-result-object v7
+    invoke-static {{v7}}, {HIDDEN_ITEMS}->isHidden(Ljava/lang/String;)Z
+    move-result v7
+    if-eqz v7, :scan_visible
+    return v3
+
+    :scan_visible
+""" + body[end:]
+        return replace_once(body, "    array-length v8, v7", """\
+    if-nez v7, :entries_available
+    return v3
+
+    :entries_available
+    array-length v8, v7""")
+
+    source = patch_method(scanner.read_text(encoding="utf-8"), f"b({LOCAL}I)I", fix_scan)
+    scanner.write_text(source, encoding="utf-8", newline="\n")
+
+    patch_hidden_scan_messages(decoded)
+
+    album_list = "Lcom/alensw/ui/c/bz;"
+    gallery = decoded / "smali_classes4/com/alensw/ui/c/bz.smali"
+
+    def reload_on_hide(body):
+        start = body.index(f"    invoke-virtual {{p0}}, {album_list}->v()V")
+        end = body.index("    goto :goto_1", start)
+        return body[:start] + f"    invoke-virtual {{p0, v1}}, {album_list}->a(Z)V\n\n" + body[end:]
+
+    source = patch_method(gallery.read_text(encoding="utf-8"), "o()V", reload_on_hide)
+
+    def ignore_previous_mode(body):
+        for case in (":pswitch_0", ":pswitch_1"):
+            object_load = "    iget-object v0, p1, Landroid/os/Message;->obj:Ljava/lang/Object;"
+            body = replace_once(body, f"    {case}\n{object_load}", f"""\
+    {case}
+    sget-object v0, {QUICK_APP}->q:{SCANNER}
+    iget-boolean v0, v0, {SCANNER}->b:Z
+    iget v3, p1, Landroid/os/Message;->arg2:I
+    if-ne v0, v3, :goto_0
+
+{object_load}""")
+        return body
+
+    source = patch_method(source, "handleMessage(Landroid/os/Message;)Z", ignore_previous_mode)
+    gallery.write_text(source, encoding="utf-8", newline="\n")
+
+    after_unlock = decoded / "smali/com/alensw/ui/c/cr.smali"
+    source = replace_once(after_unlock.read_text(encoding="utf-8"),
+                          "    const/4 v1, 0x0", "    const/4 v1, 0x1")
+    after_unlock.write_text(source, encoding="utf-8", newline="\n")
+
+
+def patch_hidden_scan_messages(decoded):
+    model = decoded / "smali/com/alensw/a"
+    scan = "Lcom/alensw/a/v;"
+    scanner = model / "v.smali"
+    source = patch_method(scanner.read_text(encoding="utf-8"), f"a({LOCAL}Z)I",
+                          lambda body: replace_once(body, "    move v0, v1\n\n    move p2, v1",
+                                                    "    move p2, v1"))
+    message = "Landroid/os/Handler;->obtainMessage(IIILjava/lang/Object;)Landroid/os/Message;"
+    old = f"    invoke-virtual {{v0, v2, v7, v7, p1}}, {message}"
+    source = replace_once(source, old, f"""\
+    iget-boolean v6, p0, {scan}->d:Z
+    invoke-virtual {{v0, v2, v7, v6, p1}}, {message}""")
+    scanner.write_text(source, encoding="utf-8", newline="\n")
+
+    worker = model / "w.smali"
+    worker_class = "Lcom/alensw/a/w;"
+
+    def tag_results(body):
+        body = replace_once(body, "    .locals 8", "    .locals 9")
+        cases = (
+            ("v0, v7, v5, v5, v1", "v0, v7, v5, v8, v1", 2),
+            ("v2, v3, v5, v5, v4", "v2, v3, v5, v8, v4", 1),
+        )
+        for old_args, new_args, count in cases:
+            old = f"    invoke-virtual {{{old_args}}}, {message}"
+            if body.count(old) != count:
+                raise ValueError("Unexpected folder scan result")
+            body = body.replace(old, f"""\
+    iget-object v8, p0, {worker_class}->f:{scan}
+    iget-boolean v8, v8, {scan}->d:Z
+    invoke-virtual {{{new_args}}}, {message}""")
+        return body
+
+    source = patch_method(worker.read_text(encoding="utf-8"), "a()Ljava/lang/Void;", tag_results)
+    worker.write_text(source, encoding="utf-8", newline="\n")
 
 
 def patch_reader_chrome(decoded):

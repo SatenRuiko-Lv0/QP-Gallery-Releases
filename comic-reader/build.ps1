@@ -3,7 +3,7 @@ param(
     [Parameter(Mandatory)] [string] $ApktoolJar,
     [string] $JavaDir = $env:JAVA_HOME,
     [string] $AndroidSdk = "$env:LOCALAPPDATA/Android/Sdk",
-    [string] $OutputApk = "$PSScriptRoot/../dist/QP-Gallery-10.0.2-Comic-Standalone-v2.apk"
+    [string] $OutputApk = "$PSScriptRoot/../dist/QP-Gallery-10.0.2-Comic-Standalone-v5.apk"
 )
 
 $ErrorActionPreference = 'Stop'
@@ -47,8 +47,13 @@ try {
     # Compile against the upstream signatures. Only the comic classes go into the new DEX.
     @'
 package com.alensw.a;
-public class e {
+public class e extends java.io.File {
     public int c;
+    public java.util.ArrayList<e> h;
+    public e(java.io.File file, int order) {
+        super(file.getPath());
+    }
+    public native void a(char type, int time, long size, String name);
     public native int j();
     public native char f(int index);
     public native android.net.Uri d(int index);

@@ -4,6 +4,7 @@ import android.app.ActionBar;
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.drawable.Animatable;
+import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Build;
@@ -24,13 +25,8 @@ import android.widget.TextView;
 import com.alensw.ui.c.cx;
 
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 
 final class ComicReader extends FrameLayout {
-    private static final ExecutorService DECODERS = Executors.newFixedThreadPool(2);
-
     static final class Page {
         final Uri uri;
         final String title;
@@ -45,6 +41,7 @@ final class ComicReader extends FrameLayout {
     }
 
     private final List<Page> pages;
+    private final PageLoader loader;
     private final cx activity;
     private final ListView list;
     private final TextView counter;
@@ -66,6 +63,20 @@ final class ComicReader extends FrameLayout {
         this.current = initialPage;
         this.initialPage = initialPage;
         this.initialOffset = initialOffset;
+        loader = new PageLoader(context, pages, initialPage, new PageLoader.Listener() {
+            @Override
+            public void aspectReady(int index, float aspect) {
+                updatePageAspect(index, aspect);
+            }
+
+            @Override
+            public void imageReady(int index) {
+                PageView view = visibleView(index);
+                if (view != null) {
+                    view.refreshImage();
+                }
+            }
+        });
         failure = ComicMode.chinese(context) ? "无法加载图片" : "Could not load image";
         setBackgroundColor(Color.BLACK);
 
@@ -171,6 +182,7 @@ final class ComicReader extends FrameLayout {
             public void onScroll(AbsListView view, int first, int visible, int total) {
                 if (visible > 0) {
                     int page = Math.min(first, pages.size() - 1);
+                    loader.setViewport(page, Math.min(first + visible - 1, pages.size() - 1));
                     if (page != current) {
                         updateCounter(page);
                     }
@@ -182,7 +194,51 @@ final class ComicReader extends FrameLayout {
     @Override
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
+        loader.attach(getWidth());
         requestApplyInsets();
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        loader.detach();
+        super.onDetachedFromWindow();
+    }
+
+    @Override
+    protected void onSizeChanged(int width, int height, int oldWidth, int oldHeight) {
+        super.onSizeChanged(width, height, oldWidth, oldHeight);
+        loader.setWidth(width);
+    }
+
+    private PageView visibleView(int index) {
+        View child = list.getChildAt(index - list.getFirstVisiblePosition());
+        if (child instanceof PageView) {
+            PageView view = (PageView) child;
+            if (view.index == index) {
+                return view;
+            }
+        }
+        return null;
+    }
+
+    private void updatePageAspect(int index, float aspect) {
+        Page page = pages.get(index);
+        if (aspect <= 0 || !Float.isFinite(aspect) || page.aspect == aspect) {
+            return;
+        }
+        page.aspect = aspect;
+        PageView view = visibleView(index);
+        if (view != null) {
+            view.requestLayout();
+        }
+        if (index == pages.size() - 1) {
+            endSpace.requestLayout();
+        }
+        if (index == current && index == initialPage && initialOffset > 0) {
+            int offset = Math.round(pageHeight(page, list.getWidth()) * initialOffset);
+            initialOffset = 0;
+            list.setSelectionFromTop(index, -offset);
+        }
     }
 
     void resetChrome() {
@@ -339,8 +395,8 @@ final class ComicReader extends FrameLayout {
         private final ImageView image;
         private final TextView error;
         private Page page;
-        private Future<?> pending;
-        private int generation;
+        private int index = -1;
+        private PageImage displayed;
 
         PageView() {
             super(ComicReader.this.getContext());
@@ -361,58 +417,38 @@ final class ComicReader extends FrameLayout {
             }
             clear();
             page = next;
-            int token = generation;
-            int width = list.getWidth();
-            if (width <= 0) {
-                width = getResources().getDisplayMetrics().widthPixels;
-            }
-            int decodeWidth = width;
-            pending = DECODERS.submit(() -> {
-                PageImage result = PageImage.decode(getContext().getContentResolver(),
-                        getResources(), next.uri, decodeWidth);
-                if (!Thread.currentThread().isInterrupted()) {
-                    counter.post(() -> show(result, next, index, token));
-                }
-            });
+            this.index = index;
+            refreshImage();
         }
 
-        private void show(PageImage result, Page next, int index, int token) {
-            if (token != generation || page != next) {
+        void refreshImage() {
+            if (index < 0) {
                 return;
             }
-            pending = null;
+            PageImage result = loader.image(index);
             if (result == null) {
-                error.setVisibility(VISIBLE);
+                error.setVisibility(loader.failed(index) ? VISIBLE : GONE);
                 return;
             }
-            next.aspect = result.aspect;
-            image.setImageDrawable(result.drawable);
-            if (result.drawable instanceof Animatable && isAttachedToWindow()) {
-                ((Animatable) result.drawable).start();
-            }
-            requestLayout();
-            if (index == pages.size() - 1) {
-                endSpace.requestLayout();
-            }
-            if (index == current && index == initialPage && initialOffset > 0) {
-                int offset = Math.round(pageHeight(next, list.getWidth()) * initialOffset);
-                initialOffset = 0;
-                list.setSelectionFromTop(index, -offset);
+            if (displayed != result) {
+                stopAnimation();
+                Drawable drawable = result.drawable(getResources());
+                image.setImageDrawable(drawable);
+                displayed = result;
+                error.setVisibility(GONE);
+                if (drawable instanceof Animatable && isAttachedToWindow()) {
+                    ((Animatable) drawable).start();
+                }
             }
         }
 
         void clear() {
-            generation++;
-            if (pending != null) {
-                pending.cancel(true);
-                pending = null;
-            }
-            if (image.getDrawable() instanceof Animatable) {
-                ((Animatable) image.getDrawable()).stop();
-            }
+            stopAnimation();
             image.setImageDrawable(null);
             error.setVisibility(GONE);
             page = null;
+            index = -1;
+            displayed = null;
         }
 
         @Override
@@ -425,6 +461,7 @@ final class ComicReader extends FrameLayout {
         @Override
         protected void onAttachedToWindow() {
             super.onAttachedToWindow();
+            refreshImage();
             if (image.getDrawable() instanceof Animatable) {
                 ((Animatable) image.getDrawable()).start();
             }
@@ -432,10 +469,14 @@ final class ComicReader extends FrameLayout {
 
         @Override
         protected void onDetachedFromWindow() {
+            stopAnimation();
+            super.onDetachedFromWindow();
+        }
+
+        private void stopAnimation() {
             if (image.getDrawable() instanceof Animatable) {
                 ((Animatable) image.getDrawable()).stop();
             }
-            super.onDetachedFromWindow();
         }
     }
 }

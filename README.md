@@ -4,7 +4,7 @@
 
 基于 WSTxda 的 QuickPic Gallery 10.0.2 Alpha 2，包含 ARM64 原生库。独立包名为 `com.qpgallery.comic`，可与原版 QuickPic 并排安装。[上游发布页](https://github.com/WSTxda/QP-Gallery-Releases/releases/tag/10.0.2)
 
-[下载 QP 漫画版 10.0.2-comic.2](https://github.com/SatenRuiko-Lv0/QP-Gallery-Releases/releases/tag/10.0.2-comic.2)
+[下载 QP 漫画版 10.0.2-comic.5](https://github.com/SatenRuiko-Lv0/QP-Gallery-Releases/releases/tag/10.0.2-comic.5)
 
 在 **设置 → 查看 → 漫画阅读模式** 中开启。打开任意一张图片，即可按相册顺序连续竖滑，右下角显示页码。轻点图片切换顶栏，滑动时自动收起。
 

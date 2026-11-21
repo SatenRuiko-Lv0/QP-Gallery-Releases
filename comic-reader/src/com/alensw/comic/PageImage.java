@@ -15,25 +15,36 @@ import android.util.Size;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.function.DoubleConsumer;
 
 final class PageImage {
     private static final int MAX_PIXELS = 2_000_000;
     private static final int MAX_SIDE = 8192;
 
-    final Drawable drawable;
-    final float aspect;
+    private final Drawable drawable;
+    final int bytes;
 
-    PageImage(Drawable drawable, float aspect) {
+    private PageImage(Drawable drawable) {
         this.drawable = drawable;
-        this.aspect = aspect;
+        bytes = drawable instanceof BitmapDrawable
+                ? ((BitmapDrawable) drawable).getBitmap().getAllocationByteCount()
+                : Math.max(1, drawable.getIntrinsicWidth() * drawable.getIntrinsicHeight() * 8);
     }
 
-    static PageImage decode(ContentResolver resolver, Resources resources, Uri uri, int width) {
+    Drawable drawable(Resources resources) {
+        if (drawable instanceof BitmapDrawable) {
+            return new BitmapDrawable(resources, ((BitmapDrawable) drawable).getBitmap());
+        }
+        return drawable;
+    }
+
+    static PageImage decode(ContentResolver resolver, Resources resources, Uri uri, int width,
+            DoubleConsumer onAspect) {
         try {
             if (Build.VERSION.SDK_INT >= 28) {
-                return Api28.decode(resolver, uri, width);
+                return Api28.decode(resolver, uri, width, onAspect);
             }
-            return decodeLegacy(resolver, resources, uri, width);
+            return decodeLegacy(resolver, resources, uri, width, onAspect);
         } catch (IOException | RuntimeException unreadable) {
             return null;
         }
@@ -46,26 +57,25 @@ final class PageImage {
     }
 
     private static final class Api28 {
-        static PageImage decode(ContentResolver resolver, Uri uri, int displayWidth)
+        static PageImage decode(ContentResolver resolver, Uri uri, int displayWidth,
+                DoubleConsumer onAspect)
                 throws IOException {
-            float[] aspect = new float[1];
             Drawable drawable = ImageDecoder.decodeDrawable(ImageDecoder.createSource(resolver, uri),
                     (decoder, info, source) -> {
                         Size size = info.getSize();
                         int width = size.getWidth();
                         int height = size.getHeight();
-                        aspect[0] = height / (float) width;
+                        onAspect.accept(height / (double) width);
                         double factor = scale(width, height, displayWidth);
                         decoder.setTargetSize(Math.max(1, (int) (width * factor)),
                                 Math.max(1, (int) (height * factor)));
-                        decoder.setAllocator(ImageDecoder.ALLOCATOR_SOFTWARE);
                     });
-            return new PageImage(drawable, aspect[0]);
+            return new PageImage(drawable);
         }
     }
 
     private static PageImage decodeLegacy(ContentResolver resolver, Resources resources, Uri uri,
-            int displayWidth) throws IOException {
+            int displayWidth, DoubleConsumer onAspect) throws IOException {
         BitmapFactory.Options options = new BitmapFactory.Options();
         options.inJustDecodeBounds = true;
         try (InputStream stream = resolver.openInputStream(uri)) {
@@ -88,6 +98,7 @@ final class PageImage {
         }
         boolean swap = orientation >= ExifInterface.ORIENTATION_TRANSPOSE
                 && orientation <= ExifInterface.ORIENTATION_ROTATE_270;
+        onAspect.accept(swap ? width / (double) height : height / (double) width);
         double factor = swap ? scale(height, width, displayWidth)
                 : scale(width, height, displayWidth);
         options.inSampleSize = 1;
@@ -109,8 +120,7 @@ final class PageImage {
                     bitmap = rotated;
                 }
             }
-            return new PageImage(new BitmapDrawable(resources, bitmap),
-                    swap ? width / (float) height : height / (float) width);
+            return new PageImage(new BitmapDrawable(resources, bitmap));
         }
     }
 
