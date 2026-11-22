@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">QP 图库</string>
+    <string name="tab_albums">相册</string>
+    <string name="tab_settings">设置</string>
+
+    <string name="albums_summary">%1$d 个相册 · %2$d 张图片</string>
+    <string name="photos_summary">%1$d 张图片</string>
+    <string name="search_hint">搜索相册或文件名</string>
+    <string name="action_search">搜索</string>
+    <string name="action_sort">排序</string>
+    <string name="action_more">更多</string>
+    <string name="action_back">返回</string>
+    <string name="action_close">关闭</string>
+    <string name="action_refresh">刷新</string>
+    <string name="action_share">分享</string>
+    <string name="action_info">详情</string>
+    <string name="action_delete">删除</string>
+    <string name="action_confirm_delete">确认删除</string>
+    <string name="action_open_with">打开方式</string>
+    <string name="action_copy_path">复制路径</string>
+    <string name="action_cancel">取消</string>
+    <string name="action_add_folder">添加文件夹</string>
+    <string name="action_select_current">选择当前文件夹</string>
+    <string name="action_add_selected_folders">添加已选 (%1$d)</string>
+    <string name="action_remove_selected">移除已选 (%1$d)</string>
+    <string name="action_select_all">全选</string>
+    <string name="action_invert_selection">反选</string>
+    <string name="action_resume_page">续看第 %1$d 页</string>
+    <string name="selected_count">已选 %1$d 项</string>
+    <string name="selected_albums_summary">已选 %1$d 个相册 · %2$d 张</string>
+    <string name="action_exclude_selected">排除所选</string>
+    <string name="action_delete_albums">删除相册</string>
+    <string name="delete_albums_confirm_title">确认永久删除相册</string>
+    <string name="delete_album_single_message">确定永久删除相册「%1$s」内的全部 %2$d 张图片吗？此操作无法撤销。</string>
+    <string name="delete_albums_multi_message">确定永久删除所选 %1$d 个相册内的全部 %2$d 张图片（含「%3$s」等）吗？此操作无法撤销。</string>
+    <string name="action_confirm_delete_count">确认删除 (%1$d)</string>
+    <string name="deleted_albums_result">已删除 %1$d 张图片</string>
+
+    <string name="menu_view_grid">网格视图</string>
+    <string name="menu_view_list">列表视图</string>
+    <string name="menu_show_hidden">显示隐藏项</string>
+    <string name="menu_hide_hidden">隐藏隐藏项</string>
+    <string name="menu_included_folders">包含文件夹</string>
+    <string name="menu_excluded_folders">排除文件夹</string>
+    <string name="menu_album_columns">相册网格列数</string>
+    <string name="menu_columns">网格列数</string>
+
+    <string name="sort_name_asc">名称（A → Z）</string>
+    <string name="sort_name_desc">名称（Z → A）</string>
+    <string name="sort_date_desc">最新修改优先</string>
+    <string name="sort_date_asc">最早修改优先</string>
+    <string name="sort_count_desc">图片数量优先</string>
+
+    <string name="perm_title">需要访问存储权限</string>
+    <string name="perm_desc">授予「所有文件访问权限」后，可完整扫描本地相册、漫画目录、隐藏项与自定义包含/排除规则。</string>
+    <string name="perm_grant">授予所有文件访问权限</string>
+    <string name="perm_grant_media">授予照片读取权限</string>
+
+    <string name="empty_albums">没有找到相册</string>
+    <string name="empty_albums_hint">可以刷新、开启显示隐藏项或检查文件夹规则</string>
+    <string name="empty_photos">没有找到图片</string>
+    <string name="empty_search">没有匹配结果</string>
+    <string name="could_not_load_image">无法加载图片</string>
+    <string name="copied_path">路径已复制</string>
+    <string name="delete_confirm_title">确认永久删除</string>
+    <string name="delete_confirm_message">确定从存储中永久删除「%1$s」吗？此操作无法撤销。</string>
+    <string name="deleted_file">已删除</string>
+    <string name="delete_failed">删除失败</string>
+
+    <string name="details_title">文件详情</string>
+    <string name="details_path">路径</string>
+    <string name="details_dimensions">分辨率</string>
+    <string name="details_modified">修改时间</string>
+
+    <string name="settings_title">设置</string>
+    <string name="settings_section_theme">外观与液态玻璃</string>
+    <string name="settings_theme_system">跟随系统</string>
+    <string name="settings_theme_light">浅色</string>
+    <string name="settings_theme_dark">深色</string>
+    <string name="settings_monet">启用 Monet 颜色</string>
+    <string name="settings_blur">模糊</string>
+    <string name="settings_blur_desc">启用顶栏和底栏的实时模糊效果</string>
+    <string name="settings_floating_bar">悬浮底栏</string>
+    <string name="settings_floating_bar_desc">使用 Apple 风格的悬浮胶囊底栏</string>
+    <string name="settings_liquid_glass">液态玻璃</string>
+    <string name="settings_liquid_glass_desc">启用折射透镜、重力高光与四向边界弹性拖拽（Android 13+）</string>
+    <string name="settings_app_icon">桌面应用图标</string>
+    <string name="settings_app_icon_desc">iOS 26 液态玻璃相册花瓣图标，支持随系统深色模式自动切换</string>
+    <string name="icon_mode_auto">跟随系统</string>
+    <string name="icon_mode_light">浅色玻璃</string>
+    <string name="icon_mode_dark">深色玻璃</string>
+
+    <string name="settings_section_view">阅读与显示</string>
+    <string name="settings_max_brightness">看图时最大亮度</string>
+    <string name="settings_max_brightness_desc">进入漫画阅读器时自动提高屏幕亮度</string>
+    <string name="settings_open_last_album">启动时打开上次相册</string>
+    <string name="settings_open_last_album_desc">下次冷启动进入应用时自动回到上次浏览的相册</string>
+    <string name="settings_album_grid_columns">相册网格列数</string>
+    <string name="settings_grid_columns">照片网格列数</string>
+    <string name="settings_grid_columns_desc">每行 %1$d 列</string>
+    <string name="settings_grid_columns_tick">%1$d 列</string>
+
+    <string name="settings_section_folders">浏览与文件夹</string>
+    <string name="settings_show_hidden">显示隐藏项</string>
+    <string name="settings_show_hidden_desc">显示以点开头的目录与 .nomedia 隐藏相册（杀掉应用重启后默认不显示）</string>
+    <string name="settings_included_desc_empty">默认扫描全部本地存储</string>
+    <string name="settings_included_desc_count">已包含 %1$d 个文件夹</string>
+    <string name="settings_excluded_desc_empty">未排除任何文件夹</string>
+    <string name="settings_excluded_desc_count">已排除 %1$d 个文件夹</string>
+
+    <string name="folder_rules_empty_include">尚未设置包含文件夹，默认扫描设备全部图片目录。</string>
+    <string name="folder_rules_empty_exclude">尚未排除任何文件夹。</string>
+    <string name="folder_rules_hint">长按条目可多选，支持全选与反选</string>
+    <string name="folder_picker_empty">没有子文件夹</string>
+    <string name="folder_parent">上级目录</string>
+    <string name="folder_items_count">%1$d 张图片</string>
+    <string name="folder_subfolders_count">%1$d 个子目录</string>
+    <string name="hidden_badge">隐藏</string>
+    <string name="comic_page_jump">跳转到页码</string>
+    <string name="action_scroll_to_top">返回顶部</string>
+</resources>

@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">QP Gallery</string>
+    <string name="tab_albums">Albums</string>
+    <string name="tab_settings">Settings</string>
+
+    <string name="albums_summary">%1$d albums · %2$d photos</string>
+    <string name="photos_summary">%1$d photos</string>
+    <string name="search_hint">Search albums or filenames</string>
+    <string name="action_search">Search</string>
+    <string name="action_sort">Sort</string>
+    <string name="action_more">More</string>
+    <string name="action_back">Back</string>
+    <string name="action_close">Close</string>
+    <string name="action_refresh">Refresh</string>
+    <string name="action_share">Share</string>
+    <string name="action_info">Details</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_confirm_delete">Confirm delete</string>
+    <string name="action_open_with">Open with</string>
+    <string name="action_copy_path">Copy path</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_add_folder">Add folder</string>
+    <string name="action_select_current">Select this folder</string>
+    <string name="action_add_selected_folders">Add %1$d selected</string>
+    <string name="action_remove_selected">Remove %1$d</string>
+    <string name="action_select_all">Select all</string>
+    <string name="action_invert_selection">Invert</string>
+    <string name="action_resume_page">Resume p.%1$d</string>
+    <string name="selected_count">%1$d selected</string>
+    <string name="selected_albums_summary">%1$d albums · %2$d photos</string>
+    <string name="action_exclude_selected">Exclude</string>
+    <string name="action_delete_albums">Delete</string>
+    <string name="delete_albums_confirm_title">Delete Selected Albums</string>
+    <string name="delete_album_single_message">Permanently delete album “%1$s” and all %2$d photos inside? This cannot be undone.</string>
+    <string name="delete_albums_multi_message">Permanently delete %1$d selected albums (%2$d photos total, including “%3$s”)? This cannot be undone.</string>
+    <string name="action_confirm_delete_count">Delete (%1$d)</string>
+    <string name="deleted_albums_result">Deleted %1$d photos</string>
+
+    <string name="menu_view_grid">Grid view</string>
+    <string name="menu_view_list">List view</string>
+    <string name="menu_show_hidden">Show hidden</string>
+    <string name="menu_hide_hidden">Hide hidden</string>
+    <string name="menu_included_folders">Included folders</string>
+    <string name="menu_excluded_folders">Excluded folders</string>
+    <string name="menu_album_columns">Album grid columns</string>
+    <string name="menu_columns">Grid columns</string>
+
+    <string name="sort_name_asc">Name (A → Z)</string>
+    <string name="sort_name_desc">Name (Z → A)</string>
+    <string name="sort_date_desc">Newest first</string>
+    <string name="sort_date_asc">Oldest first</string>
+    <string name="sort_count_desc">Most items</string>
+
+    <string name="perm_title">Storage access needed</string>
+    <string name="perm_desc">Grant All Files Access so QP Gallery can scan local albums, manga folders, hidden items, and folder rules accurately.</string>
+    <string name="perm_grant">Grant All Files Access</string>
+    <string name="perm_grant_media">Grant Photos Permission</string>
+
+    <string name="empty_albums">No albums found</string>
+    <string name="empty_albums_hint">Refresh, toggle hidden items, or check your folder rules.</string>
+    <string name="empty_photos">No photos found</string>
+    <string name="empty_search">No matching results</string>
+    <string name="could_not_load_image">Could not load image</string>
+    <string name="copied_path">Path copied</string>
+    <string name="delete_confirm_title">Confirm Permanent Deletion</string>
+    <string name="delete_confirm_message">Permanently delete “%1$s”? This action cannot be undone.</string>
+    <string name="deleted_file">Deleted</string>
+    <string name="delete_failed">Could not delete file</string>
+
+    <string name="details_title">File details</string>
+    <string name="details_path">Path</string>
+    <string name="details_dimensions">Resolution</string>
+    <string name="details_modified">Modified</string>
+
+    <string name="settings_title">Settings</string>
+    <string name="settings_section_theme">Appearance &amp; Liquid Glass</string>
+    <string name="settings_theme_system">System</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_dark">Dark</string>
+    <string name="settings_monet">Enable Monet color</string>
+    <string name="settings_blur">Blur</string>
+    <string name="settings_blur_desc">Enable backdrop blur for top and bottom bars</string>
+    <string name="settings_floating_bar">Floating bottom bar</string>
+    <string name="settings_floating_bar_desc">Use Apple-style floating capsule navigation bar</string>
+    <string name="settings_liquid_glass">Liquid glass</string>
+    <string name="settings_liquid_glass_desc">Enable optical refraction, specular highlights, and 2D elastic drag (Android 13+)</string>
+    <string name="settings_app_icon">App icon</string>
+    <string name="settings_app_icon_desc">iOS 26 Liquid Glass flower icon (supports system dark mode)</string>
+    <string name="icon_mode_auto">System</string>
+    <string name="icon_mode_light">Light Glass</string>
+    <string name="icon_mode_dark">Dark Glass</string>
+
+    <string name="settings_section_view">Reading &amp; Display</string>
+    <string name="settings_max_brightness">Maximum brightness when reading</string>
+    <string name="settings_max_brightness_desc">Boost screen brightness inside the vertical comic reader</string>
+    <string name="settings_open_last_album">Remember last album</string>
+    <string name="settings_open_last_album_desc">Automatically open the last browsed album on next launch</string>
+    <string name="settings_album_grid_columns">Album grid columns</string>
+    <string name="settings_grid_columns">Photo grid columns</string>
+    <string name="settings_grid_columns_desc">%1$d columns per row</string>
+    <string name="settings_grid_columns_tick">%1$d col</string>
+
+    <string name="settings_section_folders">Browse &amp; Folders</string>
+    <string name="settings_show_hidden">Show hidden items</string>
+    <string name="settings_show_hidden_desc">Temporarily reveal dot-prefixed and .nomedia albums (resets to hidden on next cold launch)</string>
+    <string name="settings_included_desc_empty">All storage folders scanned</string>
+    <string name="settings_included_desc_count">%1$d included folders</string>
+    <string name="settings_excluded_desc_empty">No excluded folders</string>
+    <string name="settings_excluded_desc_count">%1$d excluded folders</string>
+
+    <string name="folder_rules_empty_include">No included folders set. All folders on storage are scanned by default.</string>
+    <string name="folder_rules_empty_exclude">No excluded folders.</string>
+    <string name="folder_rules_hint">Long-press items to multi-select</string>
+    <string name="folder_picker_empty">No subfolders</string>
+    <string name="folder_parent">Parent directory</string>
+    <string name="folder_items_count">%1$d images</string>
+    <string name="folder_subfolders_count">%1$d subfolders</string>
+    <string name="hidden_badge">Hidden</string>
+    <string name="comic_page_jump">Jump to page</string>
+    <string name="action_scroll_to_top">Scroll to top</string>
+</resources>
